@@ -2,6 +2,7 @@ from sklearn.datasets import load_files
 from keras.utils import np_utils
 import numpy as np
 from os import listdir
+import pickle as pkl
 from keras.preprocessing import image
 from tqdm import tqdm
 from keras.applications.resnet50 import preprocess_input
@@ -9,7 +10,7 @@ from keras.applications.resnet50 import ResNet50
 from keras.layers import GlobalAveragePooling2D, Dense, Dropout, LeakyReLU
 from keras.models import Sequential
 from keras import optimizers
-from keras.callbacks import ModelCheckpoint
+from keras.callbacks import ModelCheckpoint, EarlyStopping
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_curve, auc
 from sklearn.metrics import confusion_matrix
@@ -20,8 +21,6 @@ from keras import backend as K
 K.tensorflow_backend._get_available_gpus()
 
 ######################################################################################################################
-print("Pickling test")
-
 def load_dataset(path):
     data = load_files(path)
     paths = np.array(data['filenames'])
@@ -34,7 +33,6 @@ test_files, test_targets = load_dataset(r'C:/Users/Dwight/Music/AP187-Imaging/De
 
 ######################################################################################################################
 diseases = sorted(listdir('./data/train'))
-
 # train 2000 - 700
 # valid 150  - 100
 # test  600  - 200
@@ -52,9 +50,31 @@ def get_tensors(paths):
     return np.vstack([get_tensor(path) for path in tqdm(paths)])
 
 ######################################################################################################################
-train_tensors = preprocess_input(get_tensors(train_files))
-valid_tensors = preprocess_input(get_tensors(valid_files))
-test_tensors = preprocess_input(get_tensors(test_files))
+# print("\nPickling Training data... ")
+#
+# with open('./pickledres/get_trn.pkl', 'wb') as f:
+#     pkl.dump(get_tensors(train_files), f)
+# with open('./pickledres/get_vld.pkl', 'wb') as f:
+#     pkl.dump(get_tensors(valid_files), f)
+# with open('./pickledres/get_tst.pkl', 'wb') as f:
+#     pkl.dump(get_tensors(test_files), f)
+#
+######################################################################################################################
+print("\nLoading Training pickles... ")
+
+with open('./pickledres/get_trn.pkl', 'rb') as f:
+    get_trn = pkl.load(f)
+with open('./pickledres/get_vld.pkl', 'rb') as f:
+    get_vld = pkl.load(f)
+with open('./pickledres/get_tst.pkl', 'rb') as f:
+    get_tst = pkl.load(f)
+
+######################################################################################################################
+print("\nPre-processing...")
+
+train_tensors = preprocess_input(get_trn)
+valid_tensors = preprocess_input(get_vld)
+test_tensors = preprocess_input(get_tst)
 
 ######################################################################################################################
 resnet50 = ResNet50(include_top=False, input_shape=(224, 224, 3))
@@ -75,14 +95,14 @@ model.add(Dropout(0.5))
 model.add(Dense(512))
 model.add(LeakyReLU(alpha=0.01))
 model.add(Dense(3, activation='softmax'))
-model.summary()
+
 print(model.summary())
 
 ######################################################################################################################
 def setup_to_transfer_learn(model):
-    """Freeze all pretrained layers and compile the model"""
-    for layer in model.layers[:312]:
-        layer.trainable = False
+    # """Freeze all pretrained layers and compile the model"""
+    # for layer in model.layers:
+    #     layer.trainable = False
     model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
 
 # adam = optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.005, amsgrad=False)
@@ -97,7 +117,7 @@ epochs = 100
 batch_size = 50
 
 checkpointer = ModelCheckpoint(filepath='resnet.from.bottleneck.hdf5', save_best_only=True)
-early_stopping = EarlyStopping(monitor='val_loss', min_delta=0.001, patience=4, verbose=1, mode='auto')
+early_stopping = EarlyStopping(monitor='val_loss', min_delta=0.001, patience=5, verbose=1, mode='auto')
 
 history = model.fit(train_bottleneck, train_targets, epochs=epochs,
           validation_data=(valid_bottleneck, valid_targets),
@@ -107,7 +127,7 @@ model.load_weights('resnet.from.bottleneck.hdf5')
 print('\nTesting loss: {:.4f}\nTesting accuracy: {:.4f}'.format(*model.evaluate(test_bottleneck, test_targets)))
 
 ######################################################################################################################
-print("Plotting...\n")
+print("\nPlotting...")
 
 plt.plot(history.history['loss'], label='Training loss')
 plt.plot(history.history['val_loss'], label='Validation loss')
