@@ -21,23 +21,56 @@ from keras import backend as K
 K.tensorflow_backend._get_available_gpus()
 
 ######################################################################################################################
-def load_dataset(path):
-    data = load_files(path)
-    paths = np.array(data['filenames'])
-    targets = np_utils.to_categorical(np.array(data['target']))
-    return paths, targets
-
-train_files, train_targets = load_dataset(r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/data/train')
-valid_files, valid_targets = load_dataset(r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/data/valid')
-test_files, test_targets = load_dataset(r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/data/test')
+# def load_dataset(path):
+#     data = load_files(path)
+#     paths = np.array(data['filenames'])
+#     targets = np_utils.to_categorical(np.array(data['target']))
+#     return paths, targets
+#
+# train_files, train_targets = load_dataset(r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/data/train')
+# valid_files, valid_targets = load_dataset(r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/data/valid')
+# test_files, test_targets = load_dataset(r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/data/test')
+#
+# #######################################################################################################################
+# print("\nPickling files & targets... ")
+#
+# with open('./pickledres/trn_files.pkl', 'wb') as f:
+#     pkl.dump(train_files, f)
+# with open('./pickledres/trn_labels.pkl', 'wb') as f:
+#     pkl.dump(train_targets, f)
+#
+# with open('./pickledres/tst_files.pkl', 'wb') as f:
+#     pkl.dump(test_files, f)
+# with open('./pickledres/tst_labels.pkl', 'wb') as f:
+#     pkl.dump(test_targets, f)
+#
+# with open('./pickledres/vld_files.pkl', 'wb') as f:
+#     pkl.dump(valid_files, f)
+# with open('./pickledres/vld_labels.pkl', 'wb') as f:
+#     pkl.dump(valid_targets, f)
+#######################################################################################################################
+print("\nLoading files & targets... ")
+with open('./pickledres/trn_files.pkl', 'rb') as f:
+    train_files = pkl.load(f)
+with open('./pickledres/trn_labels.pkl', 'rb') as f:
+    train_targets = pkl.load(f)
+with open('./pickledres/tst_files.pkl', 'rb') as f:
+    test_files = pkl.load(f)
+with open('./pickledres/tst_labels.pkl', 'rb') as f:
+    test_targets = pkl.load(f)
+with open('./pickledres/vld_files.pkl', 'rb') as f:
+    valid_files = pkl.load(f)
+with open('./pickledres/vld_labels.pkl', 'rb') as f:
+    valid_targets = pkl.load(f)
 
 ######################################################################################################################
+
 diseases = sorted(listdir('./data/train'))
 # train 2000 - 700
 # valid 150  - 100
 # test  600  - 200
 
-print('There are {} classes: {}.'.format(len(diseases), ', '.join(diseases)))
+print('\nThere are {} classes: {}.'.format(len(diseases), ', '.join(diseases)))
 print('There are {} training images.'.format(len(train_files)))
 print('There are {} validation images.'.format(len(valid_files)))
 print('There are {} testing images.'.format(len(test_files)))
@@ -70,7 +103,7 @@ with open('./pickledres/get_tst.pkl', 'rb') as f:
     get_tst = pkl.load(f)
 
 ######################################################################################################################
-print("\nPre-processing...")
+print("\nPre-processing...") #PICKLE THIS
 
 train_tensors = preprocess_input(get_trn)
 valid_tensors = preprocess_input(get_vld)
@@ -105,21 +138,21 @@ def setup_to_transfer_learn(model):
     #     layer.trainable = False
     model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
 
-# adam = optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.005, amsgrad=False)
+optimizer = optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.005, amsgrad=False)
 # optimizer = optimizers.RMSprop(lr=0.001, rho=0.9, epsilon=None, decay=0.005)
 # optimizer = optimizers.SGD(lr=0.001, decay=0.00, momentum=0.9, nesterov=True)
-optimizer=optimizers.SGD(lr=0.0005, momentum=0.9, decay=1e-6)
+# optimizer=optimizers.SGD(lr=0.001, momentum=0.9, decay=1e-6)
 
 setup_to_transfer_learn(model)
 
 ######################################################################################################################
-epochs = 100
-batch_size = 50
+epochs = 200
+batch_size = 25
 
 checkpointer = ModelCheckpoint(filepath='resnet.from.bottleneck.hdf5', save_best_only=True)
-early_stopping = EarlyStopping(monitor='val_loss', min_delta=0.001, patience=5, verbose=1, mode='auto')
+early_stopping = EarlyStopping(monitor='val_loss', min_delta=0.001, patience=10, verbose=1, mode='auto')
 
-history = model.fit(train_bottleneck, train_targets, epochs=epochs,
+history = model.fit(train_bottleneck, train_targets, epochs=epochs, batch_size=batch_size,
           validation_data=(valid_bottleneck, valid_targets),
           callbacks=[checkpointer, early_stopping], verbose=1, shuffle=True)
 
@@ -169,7 +202,7 @@ plt.show()
 # with open('predictions.csv', 'w') as f:
 #     csvwriter = csv.writer(f)
 #     csvwriter.writerow(['Id', 'task_1', 'task_2'])
-#     for path in tqdm_notebook(sorted(test_files)):
+#     for path in tqdm(sorted(test_files)):
 #         tensor = preprocess_input(get_tensor(path))
 #         pred = model.predict(resnet50.predict(tensor))[0]
 #         csvwriter.writerow([path, pred[0], pred[2]])
