@@ -3,7 +3,7 @@ from keras.utils import np_utils
 import numpy as np
 from os import listdir
 from keras.preprocessing import image
-from tqdm import tqdm_notebook
+from tqdm import tqdm
 from keras.applications.resnet50 import preprocess_input
 from keras.applications.resnet50 import ResNet50
 from keras.layers import GlobalAveragePooling2D, Dense, Dropout, LeakyReLU
@@ -47,7 +47,7 @@ def get_tensor(path):
     return np.expand_dims(image.img_to_array(img), axis=0)
 
 def get_tensors(paths):
-    return np.vstack([get_tensor(path) for path in tqdm_notebook(paths)])
+    return np.vstack([get_tensor(path) for path in tqdm(paths)])
 
 ######################################################################################################################
 train_tensors = preprocess_input(get_tensors(train_files))
@@ -132,16 +132,16 @@ plt.ylabel('True label')
 plt.title('Confusion matrix')
 plt.show()
 
-######################################################################################################################
-print("Exporting to csv...\n")
-with open('predictions.csv', 'w') as f:
-    csvwriter = csv.writer(f)
-    csvwriter.writerow(['Id', 'task_1', 'task_2'])
-    for path in tqdm_notebook(sorted(test_files)):
-        tensor = preprocess_input(get_tensor(path))
-        pred = model.predict(resnet50.predict(tensor))[0]
-        csvwriter.writerow([path, pred[0], pred[2]])
-
-print("Printing final results...\n")
-finalresult = ['python',r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/get_results.py',r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/predictions.csv']
-finalresultcomplete = subprocess.run(finalresult, shell=True)
+# ######################################################################################################################
+# print("Exporting to csv...\n")
+# with open('predictions.csv', 'w') as f:
+#     csvwriter = csv.writer(f)
+#     csvwriter.writerow(['Id', 'task_1', 'task_2'])
+#     for path in tqdm_notebook(sorted(test_files)):
+#         tensor = preprocess_input(get_tensor(path))
+#         pred = model.predict(resnet50.predict(tensor))[0]
+#         csvwriter.writerow([path, pred[0], pred[2]])
+#
+# print("Printing final results...\n")
+# finalresult = ['python',r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/get_results.py',r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/predictions.csv']
+# finalresultcomplete = subprocess.run(finalresult, shell=True)
