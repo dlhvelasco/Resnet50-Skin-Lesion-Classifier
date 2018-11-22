@@ -77,19 +77,29 @@ model.summary()
 print(model.summary())
 
 ######################################################################################################################
+def setup_to_transfer_learn(model):
+    """Freeze all pretrained layers and compile the model"""
+    for layer in model.layers[:312]:
+        layer.trainable = False
+    model.compile(optimizer=optimizer, loss='categorical_crossentropy', metrics=['accuracy'])
 
 # adam = optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.005, amsgrad=False)
 # optimizer = optimizers.RMSprop(lr=0.001, rho=0.9, epsilon=None, decay=0.005)
 # optimizer = optimizers.SGD(lr=0.001, decay=0.00, momentum=0.9, nesterov=True)
 optimizer=optimizers.SGD(lr=0.0005, momentum=0.9, decay=1e-6)
 
-model.compile(loss='categorical_crossentropy', metrics=['accuracy'], optimizer=optimizer)
+setup_to_transfer_learn(model)
 
 ######################################################################################################################
+epochs = 100
+batch_size = 50
+
 checkpointer = ModelCheckpoint(filepath='resnet.from.bottleneck.hdf5', save_best_only=True)
-history = model.fit(train_bottleneck, train_targets, epochs=100,
+early_stopping = EarlyStopping(monitor='val_loss', min_delta=0.001, patience=4, verbose=1, mode='auto')
+
+history = model.fit(train_bottleneck, train_targets, epochs=epochs,
           validation_data=(valid_bottleneck, valid_targets),
-          callbacks=[checkpointer], verbose=1, shuffle=True)
+          callbacks=[checkpointer, early_stopping], verbose=1, shuffle=True)
 
 model.load_weights('resnet.from.bottleneck.hdf5')
 print('\nTesting loss: {:.4f}\nTesting accuracy: {:.4f}'.format(*model.evaluate(test_bottleneck, test_targets)))
