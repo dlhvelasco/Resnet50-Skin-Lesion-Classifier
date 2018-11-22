@@ -6,7 +6,7 @@ from keras.preprocessing import image
 from tqdm import tqdm_notebook
 from keras.applications.resnet50 import preprocess_input
 from keras.applications.resnet50 import ResNet50
-from keras.layers import GlobalAveragePooling2D, Dense, Dropout
+from keras.layers import GlobalAveragePooling2D, Dense, Dropout, LeakyReLU
 from keras.models import Sequential
 from keras import optimizers
 from keras.callbacks import ModelCheckpoint
@@ -33,9 +33,9 @@ test_files, test_targets = load_dataset(r'C:/Users/Dwight/Music/AP187-Imaging/De
 ######################################################################################################################
 diseases = sorted(listdir('./data/train'))
 
-# train 700
-# valid 100
-# test  200
+# train 2000 - 700
+# valid 150  - 100
+# test  600  - 200
 
 print('There are {} classes: {}.'.format(len(diseases), ', '.join(diseases)))
 print('There are {} training images.'.format(len(train_files)))
@@ -65,9 +65,13 @@ test_bottleneck = resnet50.predict(test_tensors)
 model = Sequential()
 model.add(GlobalAveragePooling2D(input_shape=train_bottleneck.shape[1:]))
 model.add(Dropout(0.5))
-model.add(Dense(512, activation='relu'))
+# model.add(Dense(512, activation='relu'))
+model.add(Dense(512))
+model.add(LeakyReLU(alpha=0.01))
 model.add(Dropout(0.5))
-model.add(Dense(512, activation='relu'))
+# model.add(Dense(512, activation='relu'))
+model.add(Dense(512))
+model.add(LeakyReLU(alpha=0.01))
 model.add(Dense(3, activation='softmax'))
 model.summary()
 print(model.summary())
@@ -76,10 +80,10 @@ print(model.summary())
 
 # adam = optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.005, amsgrad=False)
 # optimizer = optimizers.RMSprop(lr=0.001, rho=0.9, epsilon=None, decay=0.005)
-optimizer = optimizers.SGD(lr=0.001, decay=0.00, momentum=0.9, nesterov=True)
+# optimizer = optimizers.SGD(lr=0.001, decay=0.00, momentum=0.9, nesterov=True)
+optimizer=optimizers.SGD(lr=0.0005, momentum=0.9, decay=1e-6)
 
-# model.compile(loss='categorical_crossentropy', metrics=['accuracy'], optimizer=optimizers.SGD(lr=0.0001, momentum=0.9, decay=1e-6))
-model.compile(loss='categorical_crossentropy', metrics=['accuracy'], optimizer=adam) # Alternative
+model.compile(loss='categorical_crossentropy', metrics=['accuracy'], optimizer=optimizer)
 
 ######################################################################################################################
 checkpointer = ModelCheckpoint(filepath='resnet.from.bottleneck.hdf5', save_best_only=True)
@@ -129,15 +133,15 @@ plt.title('Confusion matrix')
 plt.show()
 
 ######################################################################################################################
-# print("Exporting to csv...\n")
-# with open('predictions.csv', 'w') as f:
-#     csvwriter = csv.writer(f)
-#     csvwriter.writerow(['Id', 'task_1', 'task_2'])
-#     for path in tqdm_notebook(sorted(test_files)):
-#         tensor = preprocess_input(get_tensor(path))
-#         pred = model.predict(resnet50.predict(tensor))[0]
-#         csvwriter.writerow([path, pred[0], pred[2]])
-#
-# print("Printing final results...\n")
-# finalresult = ['python',r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/get_results.py',r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/predictions.csv']
-# finalresultcomplete = subprocess.run(finalresult, shell=True)
+print("Exporting to csv...\n")
+with open('predictions.csv', 'w') as f:
+    csvwriter = csv.writer(f)
+    csvwriter.writerow(['Id', 'task_1', 'task_2'])
+    for path in tqdm_notebook(sorted(test_files)):
+        tensor = preprocess_input(get_tensor(path))
+        pred = model.predict(resnet50.predict(tensor))[0]
+        csvwriter.writerow([path, pred[0], pred[2]])
+
+print("Printing final results...\n")
+finalresult = ['python',r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/get_results.py',r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/predictions.csv']
+finalresultcomplete = subprocess.run(finalresult, shell=True)
