@@ -19,6 +19,8 @@ import subprocess
 from keras import backend as K
 K.tensorflow_backend._get_available_gpus()
 
+######################################################################################################################
+print("Pickling test")
 
 def load_dataset(path):
     data = load_files(path)
