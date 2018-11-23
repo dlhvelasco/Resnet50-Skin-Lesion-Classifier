@@ -31,7 +31,7 @@ K.tensorflow_backend._get_available_gpus()
 # valid_files, valid_targets = load_dataset(r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/data/valid')
 # test_files, test_targets = load_dataset(r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/data/test')
 #
-# #######################################################################################################################
+# #####################################################################################################################
 # print("\nPickling files & targets... ")
 #
 # with open('./pickledres/trn_files.pkl', 'wb') as f:
@@ -48,6 +48,7 @@ K.tensorflow_backend._get_available_gpus()
 #     pkl.dump(valid_files, f)
 # with open('./pickledres/vld_labels.pkl', 'wb') as f:
 #     pkl.dump(valid_targets, f)
+#
 #######################################################################################################################
 print("\nLoading files & targets... ")
 with open('./pickledres/trn_files.pkl', 'rb') as f:
@@ -64,11 +65,10 @@ with open('./pickledres/vld_labels.pkl', 'rb') as f:
     valid_targets = pkl.load(f)
 
 ######################################################################################################################
-
 diseases = sorted(listdir('./data/train'))
-# train 2000 - 700
-# valid 150  - 100
-# test  600  - 200
+# train 2000
+# valid 150
+# test  600
 
 print('\nThere are {} classes: {}.'.format(len(diseases), ', '.join(diseases)))
 print('There are {} training images.'.format(len(train_files)))
@@ -82,32 +82,32 @@ def get_tensor(path):
 def get_tensors(paths):
     return np.vstack([get_tensor(path) for path in tqdm(paths)])
 
-######################################################################################################################
-# print("\nPickling Training data... ")
+# ######################################################################################################################
+# print("\nPre-processing...")
 #
-# with open('./pickledres/get_trn.pkl', 'wb') as f:
-#     pkl.dump(get_tensors(train_files), f)
-# with open('./pickledres/get_vld.pkl', 'wb') as f:
-#     pkl.dump(get_tensors(valid_files), f)
-# with open('./pickledres/get_tst.pkl', 'wb') as f:
-#     pkl.dump(get_tensors(test_files), f)
+# train_tensors = preprocess_input(get_tensors(train_files))
+# valid_tensors = preprocess_input(get_tensors(valid_files))
+# test_tensors = preprocess_input(get_tensors(test_files))
 #
+# ######################################################################################################################
+# print("\nPickling Pre-processed data... ")
+#
+# with open('./pickledres/tens_trn.pkl', 'wb') as f:
+#     pkl.dump(train_tensors, f)
+# with open('./pickledres/tens_vld.pkl', 'wb') as f:
+#     pkl.dump(valid_tensors, f)
+# with open('./pickledres/tens_tst.pkl', 'wb') as f:
+#     pkl.dump(test_tensors, f)
+
 ######################################################################################################################
-print("\nLoading Training pickles... ")
+print("\nLoading Pre-processed pickles... ")
 
-with open('./pickledres/get_trn.pkl', 'rb') as f:
-    get_trn = pkl.load(f)
-with open('./pickledres/get_vld.pkl', 'rb') as f:
-    get_vld = pkl.load(f)
-with open('./pickledres/get_tst.pkl', 'rb') as f:
-    get_tst = pkl.load(f)
-
-######################################################################################################################
-print("\nPre-processing...") #PICKLE THIS
-
-train_tensors = preprocess_input(get_trn)
-valid_tensors = preprocess_input(get_vld)
-test_tensors = preprocess_input(get_tst)
+with open('./pickledres/tens_trn.pkl', 'rb') as f:
+    train_tensors = pkl.load(f)
+with open('./pickledres/tens_vld.pkl', 'rb') as f:
+    valid_tensors = pkl.load(f)
+with open('./pickledres/tens_tst.pkl', 'rb') as f:
+    test_tensors = pkl.load(f)
 
 ######################################################################################################################
 resnet50 = ResNet50(include_top=False, input_shape=(224, 224, 3))
@@ -119,12 +119,15 @@ test_bottleneck = resnet50.predict(test_tensors)
 ######################################################################################################################
 model = Sequential()
 model.add(GlobalAveragePooling2D(input_shape=train_bottleneck.shape[1:]))
-model.add(Dropout(0.5))
-# model.add(Dense(512, activation='relu'))
+# model.add(Dropout(0.6))
+# model.add(Dense(1024, activation='relu'))
+model.add(Dense(2048))
+model.add(LeakyReLU(alpha=0.01))
+model.add(Dropout(0.7))
+# model.add(Dense(1024, activation='relu'))
 model.add(Dense(512))
 model.add(LeakyReLU(alpha=0.01))
-model.add(Dropout(0.5))
-# model.add(Dense(512, activation='relu'))
+model.add(Dropout(0.7))
 model.add(Dense(512))
 model.add(LeakyReLU(alpha=0.01))
 model.add(Dense(3, activation='softmax'))
@@ -140,14 +143,14 @@ def setup_to_transfer_learn(model):
 
 optimizer = optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=None, decay=0.005, amsgrad=False)
 # optimizer = optimizers.RMSprop(lr=0.001, rho=0.9, epsilon=None, decay=0.005)
-# optimizer = optimizers.SGD(lr=0.001, decay=0.00, momentum=0.9, nesterov=True)
-# optimizer=optimizers.SGD(lr=0.001, momentum=0.9, decay=1e-6)
+# optimizer = optimizers.SGD(lr=0.0001, decay=0.00, momentum=0.9, nesterov=True)
+# optimizer = optimizers.SGD(lr=0.0001, momentum=0.9, decay=1e-6)
 
 setup_to_transfer_learn(model)
 
 ######################################################################################################################
 epochs = 200
-batch_size = 25
+batch_size = 100
 
 checkpointer = ModelCheckpoint(filepath='resnet.from.bottleneck.hdf5', save_best_only=True)
 early_stopping = EarlyStopping(monitor='val_loss', min_delta=0.001, patience=10, verbose=1, mode='auto')
@@ -197,16 +200,20 @@ plt.ylabel('True label')
 plt.title('Confusion matrix')
 plt.show()
 
-# ######################################################################################################################
-# print("Exporting to csv...\n")
-# with open('predictions.csv', 'w') as f:
-#     csvwriter = csv.writer(f)
-#     csvwriter.writerow(['Id', 'task_1', 'task_2'])
-#     for path in tqdm(sorted(test_files)):
-#         tensor = preprocess_input(get_tensor(path))
-#         pred = model.predict(resnet50.predict(tensor))[0]
-#         csvwriter.writerow([path, pred[0], pred[2]])
-#
-# print("Printing final results...\n")
-# finalresult = ['python',r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/get_results.py',r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/predictions.csv']
-# finalresultcomplete = subprocess.run(finalresult, shell=True)
+#######################################################################################################################
+user_input=input('\nWould you like to process?\n\n(Y/N)')
+	if(user_input == 'N' or user_input == 'n'):
+		continue
+    else:
+        print("Exporting to csv...\n")
+        with open('predictions.csv', 'w') as f:
+            csvwriter = csv.writer(f)
+            csvwriter.writerow(['Id', 'task_1', 'task_2'])
+            for path in tqdm(sorted(test_files)):
+                tensor = preprocess_input(get_tensor(path))
+                pred = model.predict(resnet50.predict(tensor))[0]
+                csvwriter.writerow([path, pred[0], pred[2]])
+
+        print("Printing final results...\n")
+        finalresult = ['python',r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/get_results.py',r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/predictions.csv']
+        finalresultcomplete = subprocess.run(finalresult, shell=True)
