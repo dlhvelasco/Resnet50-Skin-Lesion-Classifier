@@ -27,9 +27,9 @@ K.tensorflow_backend._get_available_gpus()
 #     targets = np_utils.to_categorical(np.array(data['target']))
 #     return paths, targets
 #
-# train_files, train_targets = load_dataset(r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/data/train')
-# valid_files, valid_targets = load_dataset(r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/data/valid')
-# test_files, test_targets = load_dataset(r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/data/test')
+# train_files, train_targets = load_dataset(r'./data/train')
+# valid_files, valid_targets = load_dataset(r'./data/valid')
+# test_files, test_targets = load_dataset(r'./data/test')
 #
 # #####################################################################################################################
 # print("\nPickling files & targets... ")
@@ -215,5 +215,5 @@ user_input=input('\nWould you like to process?\n\n(Y/N)')
                 csvwriter.writerow([path, pred[0], pred[2]])
 
         print("Printing final results...\n")
-        finalresult = ['python',r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/get_results.py',r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/predictions.csv']
+        finalresult = ['python',r'get_results.py',r'predictions.csv']
         finalresultcomplete = subprocess.run(finalresult, shell=True)

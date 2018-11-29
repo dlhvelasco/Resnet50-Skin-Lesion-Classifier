@@ -18,9 +18,9 @@ from keras import backend as K
 K.tensorflow_backend._get_available_gpus()
 
 ######################################################################################################################
-top_level_train = os.listdir(r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/data/train')
-top_level_test = os.listdir(r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/data/test')
-top_level_valid = os.listdir(r'C:/Users/Dwight/Music/AP187-Imaging/Dermatologist-AI/data/valid')
+top_level_train = os.listdir(r'./data/train')
+top_level_test = os.listdir(r'./data/test')
+top_level_valid = os.listdir(r'./data/valid')
 
 ######################################################################################################################
 def file_parser(high_level, dirs):
